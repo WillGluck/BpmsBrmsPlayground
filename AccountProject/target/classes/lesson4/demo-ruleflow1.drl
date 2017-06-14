@@ -1,0 +1,34 @@
+//created on: 08/06/2017
+package cours
+
+//list any import classes here.
+
+import droolscours.Account;
+import util.OutputDisplay;
+
+//declare any global variables here
+
+global OutputDisplay showResult;
+
+rule "Account group1"
+	ruleflow-group "Group1"
+    when
+        Account()
+    then
+        showResult.showText("Account in Group1");
+end
+
+rule "Account group2"
+	ruleflow-group "Group2"
+	when
+		Account()
+	then
+		showResult.showText("Account in Group2");
+end
+
+rule "Start process"
+	when
+	then
+		kcontext.getKieRuntime().startProcess("RF1");
+end
+

@@ -1,0 +1,43 @@
+//created on: 07/06/2017
+package droolscours
+
+//list any import classes here.
+
+import droolscours.AccountingPeriod;
+import droolscours.CashFlow;
+import droolscours.Account;
+import util.OutputDisplay;
+
+//declare any global variables here
+
+global OutputDisplay showResults;
+
+/*
+rule "Your First Rule revisited again"
+
+    when
+        Account()
+    then
+        showResults.showText("The account exists");
+end
+*/
+
+rule "Credit rule"
+	when
+		$cash : CashFlow($aDate : mvtDate, $no : accountNo, type == CashFlow.CREDIT)
+		$acc : Account(accountNo == $no)
+		$period : AccountingPeriod(startDate <= $aDate && endDate >= $aDate)		
+	then
+		$acc.setBalance($acc.getBalance() + $cash.getAmount());
+		showResults.showText("Account no " + $acc.getAccountNo() + " has now a balance of " + $acc.getBalance());
+end
+
+rule "Debit rule"
+	when
+		$cash : CashFlow($aDate : mvtDate, $no : accountNo, type == CashFlow.DEBIT)
+		$acc : Account(accountNo == $no)
+		$period : AccountingPeriod(startDate <= $aDate && endDate >= $aDate)
+	then
+		$acc.setBalance($acc.getBalance() - $cash.getAmount());
+		showResults.showText("Account no " + $acc.getAccountNo() + " has now a balance of " + $acc.getBalance());
+end
