@@ -62,7 +62,7 @@ public class Main {
 		taskService.complete(task.getId(), taskVariables);
 		
 		//suspendendo e ativando um processo
-		repositoryService.suspendProcessDefinitionByKey("vacationRequest");
+		//repositoryService.suspendProcessDefinitionByKey("vacationRequest");
 		//repositoryService.activateProcessDefinitionByKey("vacationRequest");
 		try {
 			runtimeService.startProcessInstanceByKey("vacationRequest");

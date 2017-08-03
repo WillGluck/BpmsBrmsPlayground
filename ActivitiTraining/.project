@@ -1,17 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>DroolsTest</name>
+	<name>ActivitiTraining</name>
 	<comment></comment>
 	<projects>
 	</projects>
 	<buildSpec>
 		<buildCommand>
 			<name>org.eclipse.jdt.core.javabuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-		<buildCommand>
-			<name>org.drools.eclipse.droolsbuilder</name>
 			<arguments>
 			</arguments>
 		</buildCommand>
@@ -24,5 +19,6 @@
 	<natures>
 		<nature>org.eclipse.m2e.core.maven2Nature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
+		<nature>org.activiti.designer.nature</nature>
 	</natures>
 </projectDescription>
