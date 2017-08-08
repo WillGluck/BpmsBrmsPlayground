@@ -5,7 +5,8 @@ public class AutomaticApprovalServiceTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
-        //TODO adicionar boolean aprovarAutomaticamente 
+        execution.setVariable("aprovacaoDocumento_v", new Variable("manual", "Manual"));
+        execution.setVariableLocal("aprovacaoDocumento_v", new Variable("manual", "Manual"));
     }
 
 }
