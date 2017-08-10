@@ -59,7 +59,7 @@ public class Main {
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
         
-    //static String bpmnFileName = "diagrams/inContract_-_Souza_Cruz_sem_pools.bpmn";
+    //static String bpmnFileName = "diagrams/sem_pools.bpmn";
     static String bpmnFileName = "diagrams/test.bpmn";
     
     public static void main(String[] args) {
