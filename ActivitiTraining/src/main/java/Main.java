@@ -1,11 +1,19 @@
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.activiti.bpmn.model.BpmnModel;
@@ -19,12 +27,16 @@ import org.activiti.engine.TaskService;
 import org.activiti.engine.form.FormData;
 import org.activiti.engine.form.FormProperty;
 import org.activiti.engine.history.HistoricActivityInstance;
-import org.activiti.engine.history.HistoricDetail;
 import org.activiti.engine.history.HistoricVariableInstance;
+import org.activiti.engine.impl.RepositoryServiceImpl;
 import org.activiti.engine.impl.form.EnumFormType;
+import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
+import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
+import org.activiti.image.ProcessDiagramGenerator;
+import org.activiti.image.impl.DefaultProcessDiagramGenerator;
 
 /*
  * FormProperties
@@ -46,17 +58,19 @@ public class Main {
     static ProcessInstance processInstance;
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
+        
+    //static String bpmnFileName = "diagrams/inContract_-_Souza_Cruz_sem_pools.bpmn";
+    static String bpmnFileName = "diagrams/test.bpmn";
     
-    @SuppressWarnings("deprecation")
     public static void main(String[] args) {
 
         processEngine = ProcessEngines.getDefaultProcessEngine();
-        
+                
         repositoryService = processEngine.getRepositoryService();
         for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
-            repositoryService.deleteDeploymentCascade(deployment.getId());
+            repositoryService.deleteDeployment(deployment.getId(), true);
         }        
-        repositoryService.createDeployment().addClasspathResource("diagrams/inContract_-_Souza_Cruz_sem_pools.bpmn20.xml").deploy();
+        repositoryService.createDeployment().addClasspathResource(bpmnFileName).deploy();
         
         runtimeService = processEngine.getRuntimeService();        
         taskService = processEngine.getTaskService();
@@ -65,21 +79,61 @@ public class Main {
         
         scanner = new Scanner(System.in);
         
-        doIt();
-     
-//        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionKey("process").singleResult(); 
-//        BpmnModel model = processEngine.getRepositoryService().getBpmnModel(processDefinition.getId());
-//        List<org.activiti.bpmn.model.Process> processes = model.getProcesses();
-//        List<UserTask> userTasks = new ArrayList<>();
-//        for(org.activiti.bpmn.model.Process p : processes) {
-//             userTasks.addAll( p.findFlowElementsOfType(UserTask.class));    
-//        }        
-//        System.out.println("O loco");
-        
+        //doIt();
+        doIt2();
     }
     
-    public static void testeLane() {
+    public static void doIt2() {
         
+        try {
+            
+            List<String> responsaveis = Arrays.asList("","","");
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("emailResponsaveis", responsaveis);
+            processInstance = runtimeService.startProcessInstanceByKey("process", variables);
+           
+            Task task = getCurrentTask();
+            while(null != task) {
+                
+                test();
+                                        
+                //Object loopCounter = task.getTaskLocalVariables().get("loopCounter");
+                
+                FormData formData = formService.getTaskFormData(task.getId());
+                
+                List<FormProperty> formProperties = formData.getFormProperties();
+                formProperties.forEach(i -> {
+                    //System.out.println("Informe o valor da variável " + i.getName() + ":");
+                    //String emailResponsavel = scanner.nextLine();
+                    System.out.println(i.getName());
+                });
+                
+                taskService.complete(task.getId());
+                task = getCurrentTask();            
+            } 
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    protected static void test() throws IOException {
+        
+        String processInstanceId = processInstance.getId();
+        
+        BpmnModel pde = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
+        
+        ProcessDiagramGenerator diagramGenerator = processEngine.getProcessEngineConfiguration().getProcessDiagramGenerator();
+        
+        InputStream inputStream = diagramGenerator.generateDiagram(pde, "png", runtimeService.getActiveActivityIds(processInstanceId));        
+        byte[] buffer = new byte[inputStream.available()];
+        
+        File file = new File("D:/" + UUID.randomUUID().toString() + ".png");
+        OutputStream outputStream = new FileOutputStream(file); 
+        outputStream.write(buffer);
+        outputStream.flush();
+        outputStream.close();
+        inputStream.close();
     }
     
     public static void doIt() {
@@ -91,15 +145,16 @@ public class Main {
             System.out.println("inContract - Bem vindo escolha uma opção:");
             System.out.println(secondarySeparator);
             System.out.println("1 - Iniciar processo");
-            System.out.println("2 - Executar processo");
-            System.out.println("3 - Ver histórico de processos");
+            System.out.println("2 - Executar um processo");
+            System.out.println("3 - Ver histórico de um processo");
+            //System.out.println("4 - Verificar prazo de um processo");
             System.out.println(mainSeparator);
 //            System.out.println("4 - Ver Histórico de log");
 //            System.out.println("5 - Ver histórico de variáveis");
             
             String option = scanner.nextLine();
             
-            switch (option.trim()) {            
+            switch (option.trim()) {
                 case "1":
                     iniciarProcesso();
                     break;
@@ -109,6 +164,8 @@ public class Main {
                 case "3":
                     listarProcessosEExecutar(() -> {historico();});
                     break;
+//                case "4":
+//                    listarProcessosEExecutar(() -> {prazos();});
                 default:
                     System.out.println("Opção inválida");         
                     break;
@@ -210,6 +267,7 @@ public class Main {
         BpmnModel model = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
                 
         Task task = getCurrentTask();
+        
         while (null != task) {
             
             if (null == task.getAssignee() || "".equals(task.getAssignee())) {
@@ -230,7 +288,7 @@ public class Main {
                 System.out.println("Task atual: " + task.getName() + ", Categoria: " + laneName);
                 System.out.println(secondarySeparator);
                 
-                FormData formData = formService.getTaskFormData(task.getId());            
+                FormData formData = formService.getTaskFormData(task.getId());
                 List<FormProperty> formProperties = formData.getFormProperties();
                 
                 Map<String, Object> variables = new HashMap<>();
@@ -238,6 +296,20 @@ public class Main {
                 for (FormProperty formProperty : formProperties) {
                     
                     if (formProperty.getType() instanceof EnumFormType) {
+                        
+                        
+                        if ("envioDeEmail".equals(formProperty.getId())) {
+                            
+                            @SuppressWarnings("unchecked")                    
+                            Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
+                            for (Entry<String, String> entry : values.entrySet()) {
+                                runtimeService.setVariable(processInstance.getId(), "enviarEmail", entry.getValue());
+                                runtimeService.signalEventReceived("enviarEmail");
+                            }                            
+                            
+                        } else {
+                            //Resto
+                        }
                         
                         System.out.println("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
                         
@@ -280,6 +352,12 @@ public class Main {
             }
         }    
         System.out.println("Fluxo finalizado");
+    }
+    
+    static void prazos() {
+        
+        System.out.println("Não implementado");
+        
     }
     
     public static String getLaneNameForTaskDefinitionIdFromModel(BpmnModel model, String taskDefinitionId) {

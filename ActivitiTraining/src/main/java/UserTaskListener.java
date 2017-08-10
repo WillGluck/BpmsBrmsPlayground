@@ -7,7 +7,7 @@ public class UserTaskListener implements TaskListener {
 
     @Override
     public void notify(DelegateTask delegateTask) {
-
+        System.out.println("Oi");
     }
 
     

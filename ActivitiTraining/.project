@@ -3,6 +3,8 @@
 	<name>ActivitiTraining</name>
 	<comment></comment>
 	<projects>
+		<project>server-cc-web</project>
+		<project>server-core-ejb</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

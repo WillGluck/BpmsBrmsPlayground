@@ -33,5 +33,7 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry exported="true" kind="src" path="/server-cc-web"/>
+	<classpathentry exported="true" kind="src" path="/server-core-ejb"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
