@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,15 +27,11 @@ import org.activiti.engine.form.FormData;
 import org.activiti.engine.form.FormProperty;
 import org.activiti.engine.history.HistoricActivityInstance;
 import org.activiti.engine.history.HistoricVariableInstance;
-import org.activiti.engine.impl.RepositoryServiceImpl;
 import org.activiti.engine.impl.form.EnumFormType;
-import org.activiti.engine.impl.persistence.entity.ExecutionEntity;
-import org.activiti.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
 import org.activiti.image.ProcessDiagramGenerator;
-import org.activiti.image.impl.DefaultProcessDiagramGenerator;
 
 /*
  * FormProperties
@@ -87,16 +82,19 @@ public class Main {
         
         try {
             
+            
             List<String> responsaveis = Arrays.asList("","","");
             Map<String, Object> variables = new HashMap<>();
             variables.put("emailResponsaveis", responsaveis);
             processInstance = runtimeService.startProcessInstanceByKey("process", variables);
-           
+                       
+            BpmnModel bpmnModel = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());            
+            
             Task task = getCurrentTask();
             while(null != task) {
                 
                 test();
-                                        
+                                                        
                 //Object loopCounter = task.getTaskLocalVariables().get("loopCounter");
                 
                 FormData formData = formService.getTaskFormData(task.getId());
