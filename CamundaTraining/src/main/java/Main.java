@@ -47,12 +47,12 @@ public class Main {
     static ProcessInstance processInstance;
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
-        
-    static String bpmnFileName = "diagrams/sem_pools.bpmn";
-    //static String bpmnFileName = "diagrams/test.bpmn";
+      
+    static String bpmnFileName = "diagrams/inContract_-_Aprovação_de_Contratos_-_Souza_Cruz.bpmn20.xml";
+    //static String bpmnFileName = "diagrams/teste.bpmn";
     
     public static void main(String[] args) {
-
+        
         processEngine = ProcessEngines.getDefaultProcessEngine();
                 
         repositoryService = processEngine.getRepositoryService();
@@ -81,8 +81,9 @@ public class Main {
             Map<String, Object> variables = new HashMap<>();
             variables.put("emailResponsaveis", responsaveis);
             processInstance = runtimeService.startProcessInstanceByKey("process", variables);
-                       
-            //BpmnModelInstance bpmnModel = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());            
+            
+//            BpmnModelInstance bpmnModel = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());
+//            List<Lane> lanes = (List<Lane>) bpmnModel.getDefinitions().getChildElementsByType(Lane.class);
             
             Task task = getCurrentTask();
             while(null != task) {
@@ -231,7 +232,7 @@ public class Main {
                     variable = ((Variable) variableHistory.getValue()).getValue();
             }
             
-            String laneName = "";//getLaneNameForTaskDefinitionIdFromModel(model, activity.getActivityId());
+            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, activity.getActivityId());
             
             DateFormat format = new SimpleDateFormat("dd/mm/yyyy HH:mm:ss");
             System.out.println("Responsável: " + activity.getAssignee()
@@ -256,108 +257,104 @@ public class Main {
         System.out.println(mainSeparator);
         System.out.println("\n");
         
-        //BpmnModel model = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
-                
+        BpmnModelInstance model = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());                
         Task task = getCurrentTask();
         
         while (null != task) {
+                
+            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());
             
-            if (null == task.getAssignee() || "".equals(task.getAssignee())) {
-                                
-                System.out.println("Atenção. Você precisa informar o responsável pela atividade " + task.getName() + ":");
-                String responsavel = "";
-                while ("".equals(responsavel)) {                    
-                    responsavel = scanner.nextLine();
-                    task.setAssignee(responsavel);
-                    taskService.    claim(task.getId(), responsavel);
-                }
+            System.out.println(mainSeparator);                
+            System.out.println("Task atual: " + task.getName() + ", Categoria: " + laneName);
+            System.out.println(secondarySeparator);
+            
+            FormData formData = formService.getTaskFormData(task.getId());
+            List<FormField> formProperties = formData.getFormFields();
+            
+            Map<String, Object> variables = new HashMap<>();
+            
+            for (FormField formProperty : formProperties) {
                 
-            } else {
-                
-                String laneName = ""; //getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());
-                
-                System.out.println(mainSeparator);                
-                System.out.println("Task atual: " + task.getName() + ", Categoria: " + laneName);
-                System.out.println(secondarySeparator);
-                
-                FormData formData = formService.getTaskFormData(task.getId());
-                List<FormField> formProperties = formData.getFormFields();
-                
-                Map<String, Object> variables = new HashMap<>();
-                
-                for (FormField formProperty : formProperties) {
+                if (formProperty.getType() instanceof EnumFormType) {
                     
-                    if (formProperty.getType() instanceof EnumFormType) {
-                        
-                        
-                        if ("envioDeEmail".equals(formProperty.getId())) {
-                            
-                            @SuppressWarnings("unchecked")                    
-                            Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
-                            for (Entry<String, String> entry : values.entrySet()) {
-                                runtimeService.setVariable(processInstance.getId(), "enviarEmail", entry.getValue());
-                                runtimeService.signalEventReceived("enviarEmail");
-                            }                            
-                            
-                        } else {
-                            //Resto
-                        }
-                        
-                        System.out.println("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
+                    
+                    if ("envioDeEmail".equals(formProperty.getId())) {
                         
                         @SuppressWarnings("unchecked")                    
                         Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
                         for (Entry<String, String> entry : values.entrySet()) {
-                            System.out.println(entry.getKey() + " (" + entry.getValue() + ")");
-                        }
-                        System.out.println(mainSeparator);
-                        String key = null;    
-                        do  {
-                            key = scanner.nextLine();  
-                            if (values.containsKey(key)) {
-                                variables.put(formProperty.getId() + "_v", new Variable(key, values.get(key)));
-                            } else {
-                                System.out.println("Opção inválida");
-                            }
-                        } while (!values.containsKey(key));
+                            runtimeService.setVariable(processInstance.getId(), "enviarEmail", entry.getValue());
+                            runtimeService.signalEventReceived("enviarEmail");
+                        }                            
                         
                     } else {
-                        System.out.println("Informe o valor para o campo " + formProperty.getLabel() + ":");
-                        System.out.println(mainSeparator);
-                        String valor = scanner.nextLine();
-                        variables.put(formProperty.getId() + "_v", valor);
+                        //Resto
                     }
+                    
+                    System.out.println("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
+                    
+                    @SuppressWarnings("unchecked")                    
+                    Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
+                    for (Entry<String, String> entry : values.entrySet()) {
+                        System.out.println(entry.getKey() + " (" + entry.getValue() + ")");
+                    }
+                    System.out.println(mainSeparator);
+                    String key = null;    
+                    do  {
+                        key = scanner.nextLine();  
+                        if (values.containsKey(key)) {
+                            //variables.put(formProperty.getId() + "_v", new Variable(key, values.get(key)));
+                            variables.put(formProperty.getId(), key);
+                        } else {
+                            System.out.println("Opção inválida");
+                        }
+                    } while (!values.containsKey(key));
+                    
+                } else {
+                    System.out.println("Informe o valor para o campo " + formProperty.getLabel() + ":");
+                    System.out.println(mainSeparator);
+                    String valor = scanner.nextLine();
+                    //variables.put(formProperty.getId() + "_v", valor);
+                    variables.put(formProperty.getId(), valor);
                 }
-                
-                taskService.setVariablesLocal(task.getId(), variables);
-                taskService.complete(task.getId(), variables);
-                                            
-                System.out.println("Pressione enter para continuar (n para sair)");
-                String continuar = scanner.nextLine();            
-                switch (continuar) {
-                    case "":                
-                        task = getCurrentTask();
-                        break;
-                    default:
-                        return;                
-                }   
+            }
+            
+            taskService.setVariablesLocal(task.getId(), variables);
+            taskService.complete(task.getId(), variables);
+                                        
+            System.out.println("Pressione enter para continuar (n para sair)");
+            String continuar = scanner.nextLine();            
+            switch (continuar) {
+                case "":                
+                    task = getCurrentTask();
+                    break;
+                default:
+                    return;                
             }
         }    
+        
         System.out.println("Fluxo finalizado");
     }
     
-    static void prazos() {
-        
-        System.out.println("Não implementado");
-        
+    static void prazos() {        
+        System.out.println("Não implementado");        
     }
     
     //TODO
-//    public static String getLaneNameForTaskDefinitionIdFromModel(BpmnModel model, String taskDefinitionId) {
-//        return model.getProcesses().get(0).getLanes().stream()
-//                .filter(x -> 0 < x.getFlowReferences().stream().filter(y -> y.equals(taskDefinitionId)).count())
-//                .map(i -> i.getName()).collect(Collectors.toList()).get(0);
-//    }
+    public static String getLaneNameForTaskDefinitionIdFromModel(BpmnModelInstance model, String taskDefinitionId) {
+//        for (Lane lane : model.getModelElementsByType(Lane.class)) {
+//            for (FlowNode flowNode : lane.getFlowNodeRefs()) {
+//                if (taskDefinitionId.equals(flowNode.getId())) {
+//                    return lane.getName();
+//                }
+//            }
+//        }
+        return "";
+//        return model.getModelElementsByType(Lane.class)
+//            .stream()
+//            .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
+//            .map(i -> i.getName()).collect(Collectors.toList()).get(0);        
+    }
     
     public static Task getCurrentTask() {
         return taskService.createTaskQuery().processInstanceId(processInstance.getId()).active().singleResult();

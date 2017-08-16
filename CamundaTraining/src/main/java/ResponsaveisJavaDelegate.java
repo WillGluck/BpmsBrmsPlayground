@@ -5,7 +5,7 @@ public class ResponsaveisJavaDelegate implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        System.out.println("JavaDelegate executado");
+        System.out.println("Notificando");
     }
 
 }

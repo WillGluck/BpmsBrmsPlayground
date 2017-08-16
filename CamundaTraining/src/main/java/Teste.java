@@ -1,38 +1,14 @@
-import java.io.Serializable;
-import java.util.HashMap;
-
 import org.camunda.bpm.engine.impl.form.type.AbstractFormFieldType;
-import org.camunda.bpm.engine.impl.form.type.EnumFormType;
 import org.camunda.bpm.engine.variable.value.TypedValue;
 
-public class Variable extends AbstractFormFieldType implements Serializable {
+public class Teste extends AbstractFormFieldType {
 
-    private static final long serialVersionUID = 6698152451311959378L;
-
-    public Variable(String value, String name) {
-        this.value = value;
-        this.name = name;
-    }    
-
-    private String value;
-    private String name;
-
-    public String getValue() {
-        return value;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-    }
-
+    @Override
     public String getName() {
-        return name;
+        // TODO Auto-generated method stub
+        return null;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-    
     @Override
     public TypedValue convertToFormValue(TypedValue propertyValue) {
         return null;
@@ -46,7 +22,7 @@ public class Variable extends AbstractFormFieldType implements Serializable {
 
     @Override
     public Object convertFormValueToModelValue(Object propertyValue) {
-        
+        // TODO Auto-generated method stub
         return null;
     }
 
@@ -54,6 +30,6 @@ public class Variable extends AbstractFormFieldType implements Serializable {
     public String convertModelValueToFormValue(Object modelValue) {
         // TODO Auto-generated method stub
         return null;
-    }    
-    
+    }
+
 }

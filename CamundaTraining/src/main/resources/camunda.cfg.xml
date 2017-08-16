@@ -6,7 +6,7 @@
 
   <bean 
   	id="processEngineConfiguration" 
-  	class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
+  	class="org.camunda.bpm.engine.impl.cfg.StandaloneProcessEngineConfiguration">
   	
   	<!-- 
     <property name="eventListeners">
@@ -22,7 +22,7 @@
 
     <property 
     	name="jdbcUrl" 
-    	value="jdbc:postgresql://localhost:5432/activiti2" />
+    	value="jdbc:postgresql://localhost:5432/camunda" />
     	
     <property 
     	name="jdbcDriver" 
@@ -40,11 +40,7 @@
     	name="databaseSchemaUpdate" 
     	value="true" />
 
-    <property 
-    	name="asyncExecutorActivate" 
-    	value="false"/>
-
-    <property 
+<!--     <property 
     	name="mailServerHost" 
     	value="smtp.gmail.com" />
     	
@@ -62,7 +58,7 @@
     	
   	<property 
     	name="mailServerPort" 
-    	value="587" />
+    	value="587" /> -->
     	 
   </bean>
 

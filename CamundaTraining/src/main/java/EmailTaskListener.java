@@ -5,9 +5,6 @@ public class EmailTaskListener implements ExecutionListener  {
    
     @Override
     public void notify(DelegateExecution execution) {
-        //Pega id task
-        //busca configurações
-        //seta tudo no fluxo
         execution.setVariable("email", "bigwillgluck@gmail.com");
     }
 
