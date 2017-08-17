@@ -26,6 +26,7 @@ import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
+import org.camunda.bpm.model.bpmn.instance.Lane;
 
 /*
  * FormProperties
@@ -48,7 +49,8 @@ public class Main {
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
       
-    static String bpmnFileName = "diagrams/inContract_-_Aprovação_de_Contratos_-_Souza_Cruz.bpmn20.xml";
+    static String bpmnFileName = "diagrams/diagrama.bpmn20.xml";
+    //static String bpmnFileName = "diagrams/diagrama.bpmn";
     //static String bpmnFileName = "diagrams/teste.bpmn";
     
     public static void main(String[] args) {
@@ -215,10 +217,13 @@ public class Main {
         //TODO .includeProcessVariables() .includeTaskLocalVariables
         
         //List<HistoricDetail> detail = historyService.createHistoricDetailQuery().list();
-        taskService.createTaskQuery().processInstanceId(processInstance.getId()).orderByDueDate().asc().dueBefore(new Date()).dueAfter(new Date()).active().singleResult();
+        //taskService.createTaskQuery().processInstanceId(processInstance.getId()).orderByDueDate().asc().dueBefore(new Date()).dueAfter(new Date()).active().singleResult();
 
         List<HistoricActivityInstance> activities = historyService.createHistoricActivityInstanceQuery()
-                .processInstanceId(processInstance.getId()).orderByHistoricActivityInstanceStartTime().asc().list()
+                .processInstanceId(processInstance.getId())
+                .orderByHistoricActivityInstanceStartTime().asc()
+                .orderByHistoricActivityInstanceEndTime().asc()
+                .list()                
                 .stream().filter(i -> ("serviceTask".equals(i.getActivityType()) || "userTask".equals(i.getActivityType()))).collect(Collectors.toList());
         
         BpmnModelInstance model = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());
@@ -229,7 +234,7 @@ public class Main {
             if (null != activity.getTaskId() && !"".equals(activity.getTaskId())) {
                 HistoricVariableInstance variableHistory = historyService.createHistoricVariableInstanceQuery().processInstanceId(processInstance.getId()).taskIdIn(activity.getTaskId()).singleResult();
                 if (null != variableHistory)                 
-                    variable = ((Variable) variableHistory.getValue()).getValue();
+                    variable = (String) variableHistory.getValue();
             }
             
             String laneName = getLaneNameForTaskDefinitionIdFromModel(model, activity.getActivityId());
@@ -349,11 +354,11 @@ public class Main {
 //                }
 //            }
 //        }
-        return "";
-//        return model.getModelElementsByType(Lane.class)
-//            .stream()
-//            .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
-//            .map(i -> i.getName()).collect(Collectors.toList()).get(0);        
+        return model.getModelElementsByType(Lane.class)
+            .stream()
+            .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
+            .map(i -> i.getName()).collect(Collectors.toList()).get(0);
+        //return "";
     }
     
     public static Task getCurrentTask() {
