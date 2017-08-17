@@ -2,7 +2,6 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +48,10 @@ public class Main {
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
       
-    static String bpmnFileName = "diagrams/diagrama.bpmn20.xml";
+    //static String bpmnFileName = "diagrams/diagrama.bpmn20.xml";
     //static String bpmnFileName = "diagrams/diagrama.bpmn";
+    //static String bpmnFileName = "diagrams/diagrama_testes.bpmn";
+    static String bpmnFileName = "diagrams/xyz.bpmn";
     //static String bpmnFileName = "diagrams/teste.bpmn";
     
     public static void main(String[] args) {
@@ -266,8 +267,8 @@ public class Main {
         Task task = getCurrentTask();
         
         while (null != task) {
-                
-            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());
+                        
+            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());            
             
             System.out.println(mainSeparator);                
             System.out.println("Task atual: " + task.getName() + ", Categoria: " + laneName);
