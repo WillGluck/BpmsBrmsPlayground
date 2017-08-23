@@ -1,3 +1,4 @@
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -9,6 +10,7 @@ import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
+import org.camunda.bpm.dmn.engine.DmnEngine;
 import org.camunda.bpm.engine.FormService;
 import org.camunda.bpm.engine.HistoryService;
 import org.camunda.bpm.engine.ProcessEngine;
@@ -37,6 +39,7 @@ import org.camunda.bpm.model.bpmn.instance.Lane;
  */
 public class Main {
     
+    static DmnEngine dmnEngine;
     static ProcessEngine processEngine;
     static RepositoryService repositoryService;
     static HistoryService historyService;
@@ -47,32 +50,63 @@ public class Main {
     static ProcessInstance processInstance;
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
-      
+    
+    static String tableFileName = "tables/table_2.dmn";
+    
     //static String bpmnFileName = "diagrams/diagrama.bpmn20.xml";
-    //static String bpmnFileName = "diagrams/diagrama.bpmn";
+    static String bpmnFileName = "diagrams/diagrama_final.bpmn";
     //static String bpmnFileName = "diagrams/diagrama_testes.bpmn";
-    static String bpmnFileName = "diagrams/xyz.bpmn";
+    //static String bpmnFileName = "diagrams/xyz.bpmn";
     //static String bpmnFileName = "diagrams/teste.bpmn";
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws FileNotFoundException {
         
-        processEngine = ProcessEngines.getDefaultProcessEngine();
-                
-        repositoryService = processEngine.getRepositoryService();
-        for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
-            repositoryService.deleteDeployment(deployment.getId(), true);
-        }        
-        repositoryService.createDeployment().addClasspathResource(bpmnFileName).deploy();
-        
-        runtimeService = processEngine.getRuntimeService();        
-        taskService = processEngine.getTaskService();
-        historyService = processEngine.getHistoryService();
-        formService = processEngine.getFormService();
+        initCamundaDMNEngine();
+        initCamundaProcessEngine();
         
         scanner = new Scanner(System.in);
         
         doIt();
         //doIt2();
+    }
+    
+    static void initCamundaDMNEngine() throws FileNotFoundException {
+        
+//        dmnEngine = DmnEngineConfiguration.createDefaultDmnEngineConfiguration().buildEngine();
+//        
+//        InputStream inputStream = new FileInputStream(new File(bpmnFileName));
+//        
+//        List<DmnDecision> decisions = dmnEngine.parseDecisions(inputStream);
+//        
+//        DmnDecision decision = decisions.get(0);
+//        Map<String, Object> variables =  new HashMap<>();
+//        
+//        if (decision.isDecisionTable()) {
+//            DmnDecisionTableResult result = dmnEngine.evaluateDecisionTable(decision, variables);
+//        } else {
+//            DmnDecisionResult result = dmnEngine.evaluateDecision(decision, variables);    
+//        }
+        
+        
+        
+        
+        
+    }
+    
+    static void initCamundaProcessEngine() {
+        
+        processEngine = ProcessEngines.getDefaultProcessEngine();
+        
+        repositoryService = processEngine.getRepositoryService();
+        for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
+            repositoryService.deleteDeployment(deployment.getId(), true);
+        }        
+        repositoryService.createDeployment().addClasspathResource(bpmnFileName).deploy();
+        repositoryService.createDeployment().addClasspathResource(tableFileName).deploy();
+        runtimeService = processEngine.getRuntimeService();        
+        taskService = processEngine.getTaskService();
+        historyService = processEngine.getHistoryService();
+        formService = processEngine.getFormService();
     }
     
     public static void doIt2() {
@@ -192,7 +226,7 @@ public class Main {
         case "":
             return;
         default:
-            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(value).singleResult();
+            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(value).list().get(0); //TODO só deve retornar um
             if (null == processInstance) {
                 System.out.println("Id do processo passada é inválida.");
             } else {
@@ -233,7 +267,8 @@ public class Main {
 
             String variable = "indefinida";
             if (null != activity.getTaskId() && !"".equals(activity.getTaskId())) {
-                HistoricVariableInstance variableHistory = historyService.createHistoricVariableInstanceQuery().processInstanceId(processInstance.getId()).taskIdIn(activity.getTaskId()).singleResult();
+                List<HistoricVariableInstance> variableHistoryList = historyService.createHistoricVariableInstanceQuery().processInstanceId(processInstance.getId()).taskIdIn(activity.getTaskId()).list();
+                HistoricVariableInstance variableHistory = 0 < variableHistoryList.size() ? variableHistoryList.get(0) : null;
                 if (null != variableHistory)                 
                     variable = (String) variableHistory.getValue();
             }
@@ -317,14 +352,15 @@ public class Main {
                     } while (!values.containsKey(key));
                     
                 } else {
-                    System.out.println("Informe o valor para o campo " + formProperty.getLabel() + ":");
+                    System.out.println("Informe o valor para o campo " + formProperty.getId() + ":");
                     System.out.println(mainSeparator);
                     String valor = scanner.nextLine();
                     //variables.put(formProperty.getId() + "_v", valor);
                     variables.put(formProperty.getId(), valor);
                 }
             }
-            
+                        
+            //System.out.println("\n" + String.join("\n", taskService.getVariables(task.getId()).entrySet().stream().map(i -> i.getKey() + ":" + i.getValue()).collect(Collectors.toList())) + "\n");
             taskService.setVariablesLocal(task.getId(), variables);
             taskService.complete(task.getId(), variables);
                                         
