@@ -7,7 +7,7 @@ import org.camunda.bpm.engine.TaskService;
 
 public class Camunda {
     
-    public static String BPMN_FILE_NAME = "resources/diagrams/teste.bpmn";
+    public static String BPMN_FILE_NAME = "diagrams/teste.bpmn";
     public static ProcessEngine processEngine;
     public static RepositoryService repositoryService;
     public static HistoryService historyService;

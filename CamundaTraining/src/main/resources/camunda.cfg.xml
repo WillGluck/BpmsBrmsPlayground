@@ -22,7 +22,7 @@
 
     <property 
     	name="jdbcUrl" 
-    	value="jdbc:postgresql://localhost:5432/camunda" />
+    	value="jdbc:postgresql://localhost:5432/camunda2" />
     	
     <property 
     	name="jdbcDriver" 

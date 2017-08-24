@@ -13,7 +13,7 @@ public class TestServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String message = "Meu deus socorr";
+        String message = "Teste de exibição Camunda Workflow";
         req.setAttribute("message", message);        
         req.getRequestDispatcher("hello.jsp").forward(req, resp);
     }

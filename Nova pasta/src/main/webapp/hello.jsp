@@ -6,25 +6,20 @@
 		<title>Insert title here</title>
 		
 		<style type="text/css">
-		
-			.djs-container .highlight .djs-outline {
-   				stroke-width: 2px !important;
-   				stroke: #08c !important;
-   				fill: #bce2f5 !important;
-			}
-			
+					
 			.djs-container .highlight .djs-visual>:nth-child(1) {
-   				fill: #bce2f5 !important;
+   				fill: #00FFFF !important;
 			}
 			
 		</style>
 	</head>
 	<body>
+	
 		${message}	
 		
 		<div>
 			<button onclick="goToBpmn()">BPMN</button>
-			<button onclick="goToDmn()">DMN</button>
+			<button onclick="goToDmn()">DMN</button>		
 		</div>
 		
 		<div id="canvas" style="height:3000px;"></div>
@@ -53,7 +48,7 @@
 
 			function goToBpmn() {
 				document.getElementById('canvas').innerHTML = '';
-				downloadFileAndDoAction('diagrams/teste.bpmn', initBPMNViewer);
+				downloadFileAndDoAction('diagrams/diagrama_final.bpmn', initBPMNViewer);
 			}
 
 			function goToDmn() {
@@ -90,7 +85,7 @@
 				    	var canvas = viewer.get('canvas');
 				    	canvas.zoom('fit-viewport');
 				    	canvas.alignmentBaseline;
-				    	canvas.addMarker("Task_09acqcl", 'highlight');
+				    	canvas.addMarker("UserTask_1xfuj04", 'highlight');
 
 				    	loadCallbacksForViewer(viewer);				
 					}

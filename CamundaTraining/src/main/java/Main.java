@@ -1,18 +1,20 @@
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import org.camunda.bpm.dmn.engine.DmnEngine;
 import org.camunda.bpm.engine.FormService;
 import org.camunda.bpm.engine.HistoryService;
+import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngines;
 import org.camunda.bpm.engine.RepositoryService;
@@ -29,158 +31,121 @@ import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.Lane;
 
-/*
- * FormProperties
- * 
- * enum validacaooDocumento (devolver, reprovar, encaminhar)
- *  
- * 
+
+/**
+ * Main genérico para testes de fluxos bpmn criados utilizando a biblioteca Camunda.
  * 
  */
 public class Main {
     
-    static DmnEngine dmnEngine;
+    /**
+     * Flag Global que verifica se os "syout" devem ser executados.
+     */
+    static Boolean print = true;
+    
+    /*
+     * Engine e services diversos disponibilizados pela API Java do Camunda. 
+     */
     static ProcessEngine processEngine;
     static RepositoryService repositoryService;
     static HistoryService historyService;
     static RuntimeService runtimeService;
+    static IdentityService identityService;
     static TaskService taskService;
     static FormService formService;
+    
+    
+    /**
+     * Scanner global iniciado com inputStream apontando para o System.in. Utilizar para ler inputs do usuário com {@link Scanner#nextLine()}
+     */
     static Scanner scanner;
+    /**
+     * Lista mantendo todos as instâncias de processos iniciados durante a execução corrente (sem utilidade nenhuma, criado apenas para testes de uso de memória)
+     */
+    static List<ProcessInstance> startedProcesses = new ArrayList<>();
+    /**
+     * Intância do processo. Utilizado apenas no método {@link #listarProcessosEExecutar(Runnable)}, onde é setado para uso posterior no Runnable passado como argumento.
+     */
     static ProcessInstance processInstance;
+    
+    /*
+     * Frescuras
+     */
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
-    
     static String tableFileName = "tables/table_2.dmn";
-    
-    //static String bpmnFileName = "diagrams/diagrama.bpmn20.xml";
     static String bpmnFileName = "diagrams/diagrama_final.bpmn";
-    //static String bpmnFileName = "diagrams/diagrama_testes.bpmn";
-    //static String bpmnFileName = "diagrams/xyz.bpmn";
-    //static String bpmnFileName = "diagrams/teste.bpmn";
     
-    public static void main(String[] args) throws FileNotFoundException {
+    /**
+     * Aqui a magia acontece
+     * 
+     *  @throws Exception
+     */
+    public static void main(String[] args) throws Exception {
+     
         
-        initCamundaDMNEngine();
-        initCamundaProcessEngine();
-        
-        scanner = new Scanner(System.in);
-        
+        initCamundaProcessEngine();        
+        scanner = new Scanner(System.in);        
         doIt();
-        //doIt2();
-    }
-    
-    static void initCamundaDMNEngine() throws FileNotFoundException {
-        
-//        dmnEngine = DmnEngineConfiguration.createDefaultDmnEngineConfiguration().buildEngine();
-//        
-//        InputStream inputStream = new FileInputStream(new File(bpmnFileName));
-//        
-//        List<DmnDecision> decisions = dmnEngine.parseDecisions(inputStream);
-//        
-//        DmnDecision decision = decisions.get(0);
-//        Map<String, Object> variables =  new HashMap<>();
-//        
-//        if (decision.isDecisionTable()) {
-//            DmnDecisionTableResult result = dmnEngine.evaluateDecisionTable(decision, variables);
-//        } else {
-//            DmnDecisionResult result = dmnEngine.evaluateDecision(decision, variables);    
-//        }
-        
-        
-        
-        
         
     }
     
-    static void initCamundaProcessEngine() {
+    /**
+     * Método que inicializa a engine e todos os services Camunda. Sempre remove todos os processos já persistidos e faz deploy novamente. Apenas garantindo que estamos usando sempre a versão mais nova do xml.
+     *
+     * @throws Exception
+     */
+    static void initCamundaProcessEngine() throws Exception {
         
+        //Iniciando a engine (nesse momento o arquivo camunda.cfg.xml é lido)
+        Benchmark.getDefaultInstance().start("Inicializando a engine");        
         processEngine = ProcessEngines.getDefaultProcessEngine();
+        Benchmark.getDefaultInstance().end("Inicializando a engine");
         
-        repositoryService = processEngine.getRepositoryService();
+        //Recupera o service responsável por tudo que é estático (definições, basicamente)
+        repositoryService = processEngine.getRepositoryService();        
+        
+        //Limpa a base de dados de definições anteriores.
+        Benchmark.getDefaultInstance().start("Limpando a base de dados");
         for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
             repositoryService.deleteDeployment(deployment.getId(), true);
-        }        
-        repositoryService.createDeployment().addClasspathResource(bpmnFileName).deploy();
-        repositoryService.createDeployment().addClasspathResource(tableFileName).deploy();
+        }
+        Benchmark.getDefaultInstance().end("Limpando a base de dados");
+        
+        //Faz deploy da nova versão para a empresa CND Brazil
+        repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(bpmnFileName).deploy();
+        repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(tableFileName).deploy(); 
+        
+        //Recupera todos os services que iremos utilizar
         runtimeService = processEngine.getRuntimeService();        
         taskService = processEngine.getTaskService();
         historyService = processEngine.getHistoryService();
         formService = processEngine.getFormService();
-    }
-    
-    public static void doIt2() {
+        identityService = processEngine.getIdentityService();
         
-        try {
-            
-            
-            List<String> responsaveis = Arrays.asList("","","");
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("emailResponsaveis", responsaveis);
-            processInstance = runtimeService.startProcessInstanceByKey("process", variables);
-            
-//            BpmnModelInstance bpmnModel = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());
-//            List<Lane> lanes = (List<Lane>) bpmnModel.getDefinitions().getChildElementsByType(Lane.class);
-            
-            Task task = getCurrentTask();
-            while(null != task) {
-                
-                test();
-                                                        
-                //Object loopCounter = task.getTaskLocalVariables().get("loopCounter");
-                
-                FormData formData = formService.getTaskFormData(task.getId());
-                
-                List<FormField> formProperties = formData.getFormFields();
-                formProperties.forEach(i -> {
-                    //System.out.println("Informe o valor da variável " + i.getName() + ":");
-                    //String emailResponsavel = scanner.nextLine();
-                    System.out.println(i.getLabel());
-                });
-                
-                taskService.complete(task.getId());
-                task = getCurrentTask();            
-            } 
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        //Autentica o usuário Glück, do grupo Manager, da empresa CDN Brazil.
+        identityService.setAuthentication("WillGluck", Arrays.asList("manager"), Arrays.asList("CDN Brazil")); // Todas as chamadas tem tenantId = CDN Brazil
+        //identityService.clearAuthentication();
     }
     
-    protected static void test() throws IOException {
-        
-//        String processInstanceId = processInstance.getId();
-//        
-//        BpmnModel pde = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
-//        
-//        ProcessDiagramGenerator diagramGenerator = processEngine.getProcessEngineConfiguration().getProcessDiagramGenerator();
-//        
-//        InputStream inputStream = diagramGenerator.generateDiagram(pde, "png", runtimeService.getActiveActivityIds(processInstanceId));        
-//        byte[] buffer = new byte[inputStream.available()];
-//        
-//        File file = new File("D:/" + UUID.randomUUID().toString() + ".png");
-//        OutputStream outputStream = new FileOutputStream(file); 
-//        outputStream.write(buffer);
-//        outputStream.flush();
-//        outputStream.close();
-//        inputStream.close();
-    }
-    
-    public static void doIt() {
+    /**
+     * Exibe o menu com as opções e de acordo com a escolhida executa o que tem que executar. 
+     *
+     * @throws Exception
+     */
+    public static void doIt() throws Exception {
         
         while (true) {
             
-            System.out.println("\n");
-            System.out.println(mainSeparator);
-            System.out.println("inContract - Bem vindo escolha uma opção:");
-            System.out.println(secondarySeparator);
-            System.out.println("1 - Iniciar processo");
-            System.out.println("2 - Executar um processo");
-            System.out.println("3 - Ver histórico de um processo");
-            //System.out.println("4 - Verificar prazo de um processo");
-            System.out.println(mainSeparator);
-//            System.out.println("4 - Ver Histórico de log");
-//            System.out.println("5 - Ver histórico de variáveis");
+            print("\n");
+            print(mainSeparator);
+            print("inContract - Bem vindo escolha uma opção:");
+            print(secondarySeparator);
+            print("1 - Iniciar processo");
+            print("2 - Executar um processo");
+            print("3 - Ver histórico de um processo");
+            print("4 - Teste overkill");
+            print(mainSeparator);
             
             String option = scanner.nextLine();
             
@@ -189,55 +154,78 @@ public class Main {
                     iniciarProcesso();
                     break;
                 case "2":
-                    listarProcessosEExecutar(() -> {executarProcesso();});
+                    listarProcessosEExecutar(() -> {try { executarProcesso(processInstance, null); } catch (Exception e) { e.printStackTrace(); }});                    
                     break;
                 case "3":
-                    listarProcessosEExecutar(() -> {historico();});
+                    listarProcessosEExecutar(() -> {try { historico(processInstance, false); } catch (Exception e) { e.printStackTrace(); }});
                     break;
-//                case "4":
-//                    listarProcessosEExecutar(() -> {prazos();});
+                case "4":
+                    ultraTestFullStackOverkill();
+                    break;
                 default:
-                    System.out.println("Opção inválida");         
+                    print("Opção inválida");         
                     break;
             }             
         }   
     }
     
-    public static void iniciarProcesso() {
-        System.out.println("Processo iniciado");
+    /**
+     * Incializa uma nova instância de um processo e inicia a execução.
+     * 
+     * @throws Exception
+     */
+    public static void iniciarProcesso()  throws Exception {
+    
+        print("Processo iniciado");
         processInstance = runtimeService.startProcessInstanceByKey("process");
-        executarProcesso();
+        startedProcesses.add(processInstance);
+        
+        executarProcesso(processInstance, null);
+
     }
     
+    /**
+     * Busca todos os processos instanciados atualmente e exibe ao usuário. Após o usuário selecionar um executa o Runnable passado.
+     * 
+     * @param execution
+     */
     public static void listarProcessosEExecutar(Runnable execution) {
-        System.out.println("\n");
-        System.out.println(mainSeparator);
-        System.out.println("Processos ativos:");        
-        System.out.println(secondarySeparator);
+        
+        print("\n");
+        print(mainSeparator);
+        print("Processos ativos:");        
+        print(secondarySeparator);
         for (ProcessInstance processInstance : runtimeService.createProcessInstanceQuery().list()) {         
             Task task = getCurrentTaskForProcessInstanceId(processInstance.getId());                   
-            System.out.println("Id do processo: " + processInstance.getId() + ", Responsável: " + task.getAssignee() + ", Atividade atual: " + task.getName());
+            print("Id do processo: " + processInstance.getId() + ", Responsável: " + task.getAssignee() + ", Atividade atual: " + task.getName());
         }
-        System.out.println(secondarySeparator);
-        System.out.println("Pressione enter para voltar ou passe o id de um processo para proceder.");
-        System.out.println(mainSeparator);
+        print(secondarySeparator);
+        print("Pressione enter para voltar ou passe o id de um processo para proceder.");
+        print(mainSeparator);
         String value = scanner.nextLine();
         switch (value) {
         case "":
             return;
         default:
-            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(value).list().get(0); //TODO só deve retornar um
+            ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(value).list().get(0);
             if (null == processInstance) {
-                System.out.println("Id do processo passada é inválida.");
+                print("Id do processo passada é inválida.");
             } else {
                 Main.processInstance = processInstance;
                 execution.run();
             }            
-        }
+        }           
     }
     
-    public static void historico() {
-        
+    /**
+     * Exibe o histórico do processo (tasks, activities, ações, responsáveis, lanes, datas...)
+     * 
+     * @param processInstance Processo que terá o histórico exibido
+     * @param waitForUserInput Se for true o usuário deverá entrar um "enter" para sair do método. Caso false o método printa o que tiver que printar e finaliza.
+     * @throws Exception
+     */
+    public static void historico(ProcessInstance processInstance, Boolean waitForUserInput) throws Exception{
+            
         //sid-72656344-BF74-4A56-A35B-FFA0DA4ED609
         //model.getProcesses().get(0).getLanes().get(0).getFlowReferences()
         //model.getMainProcess().getLanes().get(0).getFlowReferences()
@@ -245,15 +233,16 @@ public class Main {
                         
         //historyService.createHistoricVariableInstanceQuery().processInstanceId(processInstance.getId()).list();
                 
-        System.out.println("\n");
-        System.out.println(mainSeparator);
-        System.out.println("Histórico de tasks do processo " + processInstance.getId());
-        System.out.println(secondarySeparator);
-        //TODO .includeProcessVariables() .includeTaskLocalVariables
+        print("\n");
+        print(mainSeparator);
+        print("Histórico de tasks do processo " + processInstance.getId());
+        print(secondarySeparator);
         
         //List<HistoricDetail> detail = historyService.createHistoricDetailQuery().list();
         //taskService.createTaskQuery().processInstanceId(processInstance.getId()).orderByDueDate().asc().dueBefore(new Date()).dueAfter(new Date()).active().singleResult();
 
+        //Benchmark.getDefaultInstance().start("History");
+        
         List<HistoricActivityInstance> activities = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstance.getId())
                 .orderByHistoricActivityInstanceStartTime().asc()
@@ -276,38 +265,50 @@ public class Main {
             String laneName = getLaneNameForTaskDefinitionIdFromModel(model, activity.getActivityId());
             
             DateFormat format = new SimpleDateFormat("dd/mm/yyyy HH:mm:ss");
-            System.out.println("Responsável: " + activity.getAssignee()
+            print("Responsável: " + activity.getAssignee()
                                + ", Atividade: " + activity.getActivityName()                              
                                + ", Ação: " + variable
                                + ", Categoria: " + laneName
                                + ", Datas: " + format.format(activity.getStartTime()) + " até " + (null != activity.getEndTime() ? format.format(activity.getEndTime()) : " indefinido"));   
         }
         
-        System.out.println(secondarySeparator);
-        System.out.println("Pressione enter para retornar");
-        scanner.nextLine();
-        System.out.println(mainSeparator);
+        //Benchmark.getDefaultInstance().end("History");
         
+        print(secondarySeparator);
+        print("Pressione enter para retornar");
+        if (waitForUserInput)
+            scanner.nextLine();
+        print(mainSeparator);                    
     }
 
-    public static void executarProcesso() {
+    /**
+     * Executa o processo passo a passo.
+     * 
+     * @param processInstance Processo que será executado.
+     * @param formInputs Lista para "automatizar" input de dados. Caso seja passada o scanner será ignorado e o método finalizará ao acabarem os formInputs.
+     * @throws Exception
+     */
+    public static void executarProcesso(ProcessInstance processInstance, List<String> formInputs) throws Exception {
+
+        Boolean hadPassedFormInputs = !(null == formInputs || formInputs.isEmpty());
         
-        System.out.println("\n");        
-        System.out.println(mainSeparator);
-        System.out.println("Executando instância " + processInstance.getId() + " da definição " + processInstance.getProcessDefinitionId());
-        System.out.println(mainSeparator);
-        System.out.println("\n");
+        print("\n");        
+        print(mainSeparator);
+        print("Executando instância " + processInstance.getId() + " da definição " + processInstance.getProcessDefinitionId());
+        print(mainSeparator);
+        print("\n");
         
         BpmnModelInstance model = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());                
-        Task task = getCurrentTask();
+        Task task = getCurrentTaskForProcessInstanceId(processInstance.getId());
         
+        Integer index = 0;
         while (null != task) {
                         
             String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());            
             
-            System.out.println(mainSeparator);                
-            System.out.println("Task atual: " + task.getName() + ", Categoria: " + laneName);
-            System.out.println(secondarySeparator);
+            print(mainSeparator);                
+            print("Task atual: " + task.getName() + ", Categoria: " + laneName);
+            print(secondarySeparator);
             
             FormData formData = formService.getTaskFormData(task.getId());
             List<FormField> formProperties = formData.getFormFields();
@@ -332,79 +333,188 @@ public class Main {
                         //Resto
                     }
                     
-                    System.out.println("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
+                    print("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
                     
                     @SuppressWarnings("unchecked")                    
                     Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
                     for (Entry<String, String> entry : values.entrySet()) {
-                        System.out.println(entry.getKey() + " (" + entry.getValue() + ")");
+                        print(entry.getKey() + " (" + entry.getValue() + ")");
                     }
-                    System.out.println(mainSeparator);
+                    print(mainSeparator);
                     String key = null;    
                     do  {
-                        key = scanner.nextLine();  
+                        key = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
+                          
                         if (values.containsKey(key)) {
                             //variables.put(formProperty.getId() + "_v", new Variable(key, values.get(key)));
                             variables.put(formProperty.getId(), key);
                         } else {
-                            System.out.println("Opção inválida");
+                            print("Opção inválida");
                         }
                     } while (!values.containsKey(key));
                     
                 } else {
-                    System.out.println("Informe o valor para o campo " + formProperty.getId() + ":");
-                    System.out.println(mainSeparator);
-                    String valor = scanner.nextLine();
+                    print("Informe o valor para o campo " + formProperty.getId() + ":");
+                    print(mainSeparator);                    
+                    String valor = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
                     //variables.put(formProperty.getId() + "_v", valor);
                     variables.put(formProperty.getId(), valor);
                 }
+                
+                index++;
             }
                         
-            //System.out.println("\n" + String.join("\n", taskService.getVariables(task.getId()).entrySet().stream().map(i -> i.getKey() + ":" + i.getValue()).collect(Collectors.toList())) + "\n");
-            taskService.setVariablesLocal(task.getId(), variables);
-            taskService.complete(task.getId(), variables);
-                                        
-            System.out.println("Pressione enter para continuar (n para sair)");
-            String continuar = scanner.nextLine();            
+            //print("\n" + String.join("\n", taskService.getVariables(task.getId()).entrySet().stream().map(i -> i.getKey() + ":" + i.getValue()).collect(Collectors.toList())) + "\n");
+            
+            Exception e;
+            do {
+                try {                    
+                    e = null;
+                    taskService.setVariablesLocal(task.getId(), variables);
+                    taskService.complete(task.getId(), variables);                
+                } catch (Exception exception) {
+                    e = exception;
+                }
+            } while (null != e);                   
+                                                    
+            print("Pressione enter para continuar (n para sair)");   
+            String continuar = null;
+            if (hadPassedFormInputs) {
+                continuar = formInputs.size() == index ? "n" : "";
+            } else {
+                continuar = scanner.nextLine();
+            }
+                         
             switch (continuar) {
                 case "":                
-                    task = getCurrentTask();
+                    task = getCurrentTaskForProcessInstanceId(processInstance.getId());
                     break;
                 default:
                     return;                
             }
-        }    
+        }
         
-        System.out.println("Fluxo finalizado");
+        print("Fluxo finalizado");
     }
     
-    static void prazos() {        
-        System.out.println("Não implementado");        
+    /**
+     * Teste XIGANTE sqn
+     * Altere o valor das seguintes variáveis:
+     *      ${print} flag para printar as coisas no console ou não (recomendo false senão vira uma bagunça)
+     *      ${amount} para quantos processos executar.
+     *      ${threadAmount} para quantas threads utilizar (valores acima de 5 podem causar problema no Pool de conexões, mas ele fica "tentando" até conseguir num loop de try catch.... sai 
+     *      ${formInputs} lista de ações para simular execução na definição que está sendo utilizada. "Customizar" de acordo com o diagrama que for ser utilizado. *          
+     * 1. O método irá inicializar ${amount} processos
+     * 2. O método irá executar ${amount} processos, de acordo com a lista de formInputs passada.
+     * 3. O método irá buscar o histórico de cada um dos ${amount} processos.
+     * 
+     * No fim ele irá printar o Benchmark de cada ação.
+     * NOTA: caso problemas ocorram no pool de conexões do banco erros vão ser printados. É só ignorar.
+     * 
+     * 
+     * @throws Exception
+     */
+    public static void ultraTestFullStackOverkill() throws Exception {
+        
+        //Configure aqui
+        print = false;
+        Integer amount = 100;
+        Integer threadAmount = 5;
+        List<String> formInputs = Arrays.asList("Encaminhar", "9000", "Assumir", "Encaminhar", "Aprovar", "Aprovar", "Aprovar", "Aprovar", "Aprovar"); //Aprovar);
+        
+        ExecutorService taskExecutor = null;
+        List<ProcessInstance> currentInstances = new ArrayList<>();
+        
+        //Inicializando os processos
+        taskExecutor = Executors.newFixedThreadPool(threadAmount);
+        System.out.println(String.format("Iniciando %d processos", amount));        
+        Benchmark.getDefaultInstance().start(String.format("Iniciando %d processos", amount));
+        for (int i = 0; i < amount; i++) {
+            taskExecutor.execute(() -> {
+                currentInstances.add(runtimeService.startProcessInstanceByKey("process"));
+            });            
+        }        
+        startedProcesses.addAll(currentInstances); //Mantém na lista para teste de memória
+        taskExecutor.shutdown();
+        taskExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);        
+        Benchmark.getDefaultInstance().end(String.format("Iniciando %d processos", amount));
+        
+        //Executando os processos
+        taskExecutor = Executors.newFixedThreadPool(threadAmount);
+        System.out.println(String.format("Executando %d processos", amount));
+        Benchmark.getDefaultInstance().start(String.format("Executando %d processos", amount));
+        for (ProcessInstance pi : currentInstances) {
+            taskExecutor.execute(() -> {                
+                try {
+                    executarProcesso(pi, formInputs);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });            
+        }
+        taskExecutor.shutdown();
+        taskExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        Benchmark.getDefaultInstance().end(String.format("Executando %d processos", amount));
+        
+        //Pesquisa o histórico dos processos.
+        taskExecutor = Executors.newFixedThreadPool(threadAmount);
+        System.out.println(String.format("Buscando histórico de %d processos", amount));
+        Benchmark.getDefaultInstance().start(String.format("Buscando histórico %d processos", amount));
+        for (ProcessInstance pi : currentInstances) {
+            taskExecutor.execute(() -> {
+                try {
+                    historico(pi, false);    
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }                
+            });
+        }
+        taskExecutor.shutdown();
+        taskExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        Benchmark.getDefaultInstance().end(String.format("Buscando histórico %d processos", amount));
+
+        //Exibe o log de execução
+        System.out.println(Benchmark.getDefaultInstance().log());
+        print = true;        
+
     }
     
-    //TODO
+    /**
+     * Retorna o nome da lane da task.
+     * 
+     * @param model Definição do modelo de alguma definição xml de diagrama bpmn. 
+     * @param taskDefinitionId Task específica que se deseja saber a Lane
+     * @return
+     */
     public static String getLaneNameForTaskDefinitionIdFromModel(BpmnModelInstance model, String taskDefinitionId) {
-//        for (Lane lane : model.getModelElementsByType(Lane.class)) {
-//            for (FlowNode flowNode : lane.getFlowNodeRefs()) {
-//                if (taskDefinitionId.equals(flowNode.getId())) {
-//                    return lane.getName();
-//                }
-//            }
-//        }
         return model.getModelElementsByType(Lane.class)
             .stream()
             .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
             .map(i -> i.getName()).collect(Collectors.toList()).get(0);
-        //return "";
     }
     
-    public static Task getCurrentTask() {
-        return taskService.createTaskQuery().processInstanceId(processInstance.getId()).active().singleResult();
-    }
+//    public static Task getCurrentTask() {
+//        return taskService.createTaskQuery().processInstanceId(processInstance.getId()).active().singleResult();
+//    }
     
+    /**
+     * Retorna a task atual da instância
+     * 
+     * @param processInstanceId Instância que se deseja recuperar a task atual.
+     * @return 
+     */
     public static Task getCurrentTaskForProcessInstanceId(String processInstanceId) {
         return taskService.createTaskQuery().processInstanceId(processInstanceId).active().singleResult();
     }
     
+    /**
+     * Util para printAR
+     * 
+     * @param text
+     */
+    public static void print(String text) {
+        if (print)
+            System.out.println(text);
+    }
     
 }
