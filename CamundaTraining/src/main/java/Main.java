@@ -1,3 +1,8 @@
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -26,6 +31,7 @@ import org.camunda.bpm.engine.history.HistoricActivityInstance;
 import org.camunda.bpm.engine.history.HistoricVariableInstance;
 import org.camunda.bpm.engine.impl.form.type.EnumFormType;
 import org.camunda.bpm.engine.repository.Deployment;
+import org.camunda.bpm.engine.repository.DeploymentWithDefinitions;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
@@ -73,16 +79,19 @@ public class Main {
      */
     static String mainSeparator =      "####################################################################################################################";
     static String secondarySeparator = "--------------------------------------------------------------------------------------------------------------------";
-    static String tableFileName = "tables/table_2.dmn";
-    static String bpmnFileName = "diagrams/diagrama_final.bpmn";
+    static String tableFileName = "tables/inContract_Modelo_Aprovação_Padrão.dmn";
+    static String bpmnFileName = "diagrams/inContract_Modelo_Aprovação_Padrão.bpmn";    
+    //static String bpmnFileName = "diagrams/teste_template.bpmn";
+    //static String bpmnFileName = "diagrams/novos_testes.bpmn";
     
-    /**
+    static String ID;
+    
+    /** 
      * Aqui a magia acontece
      * 
      *  @throws Exception
      */
-    public static void main(String[] args) throws Exception {
-     
+    public static void main(String[] args) throws Exception {     
         
         initCamundaProcessEngine();        
         scanner = new Scanner(System.in);        
@@ -96,25 +105,37 @@ public class Main {
      * @throws Exception
      */
     static void initCamundaProcessEngine() throws Exception {
-        
+
         //Iniciando a engine (nesse momento o arquivo camunda.cfg.xml é lido)
-        Benchmark.getDefaultInstance().start("Inicializando a engine");        
+        Benchmark.getDefaultInstance().start("Inicializando a engine");
         processEngine = ProcessEngines.getDefaultProcessEngine();
         Benchmark.getDefaultInstance().end("Inicializando a engine");
         
         //Recupera o service responsável por tudo que é estático (definições, basicamente)
-        repositoryService = processEngine.getRepositoryService();        
+        repositoryService = processEngine.getRepositoryService();           
         
         //Limpa a base de dados de definições anteriores.
         Benchmark.getDefaultInstance().start("Limpando a base de dados");
         for (Deployment deployment : repositoryService.createDeploymentQuery().list()) {
-            repositoryService.deleteDeployment(deployment.getId(), true);
+            //repositoryService.deleteDeployment(deployment.getId(), true);
         }
         Benchmark.getDefaultInstance().end("Limpando a base de dados");
         
         //Faz deploy da nova versão para a empresa CND Brazil
-        repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(bpmnFileName).deploy();
-        repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(tableFileName).deploy(); 
+        
+        File file = new File("D:/teclogica/BpmsBrmsPlayground/CamundaTraining/src/main/resources/diagrams/inContract_Modelo_Aprovação_Padrão.bpmn");
+        InputStream inputStream = new FileInputStream(file);
+        DeploymentWithDefinitions definitionsBpmn = null;
+        try {
+            definitionsBpmn =  repositoryService.createDeployment().tenantId("CDN Brazil").addInputStream("xyz.bpmn", inputStream).deployWithResult();
+        } finally {
+            inputStream.close();
+        }
+        
+        //DeploymentWithDefinitions definitionsBpmn =  repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(bpmnFileName).deployWithResult();
+        DeploymentWithDefinitions definitionsDmn = repositoryService.createDeployment().tenantId("CDN Brazil").addClasspathResource(tableFileName).deployWithResult(); 
+        
+        testingFileRecovering(definitionsBpmn, definitionsDmn);
         
         //Recupera todos os services que iremos utilizar
         runtimeService = processEngine.getRuntimeService();        
@@ -126,6 +147,38 @@ public class Main {
         //Autentica o usuário Glück, do grupo Manager, da empresa CDN Brazil.
         identityService.setAuthentication("WillGluck", Arrays.asList("manager"), Arrays.asList("CDN Brazil")); // Todas as chamadas tem tenantId = CDN Brazil
         //identityService.clearAuthentication();
+    }
+    
+    static void testingFileRecovering(DeploymentWithDefinitions definitionsBpmn, DeploymentWithDefinitions definitionsDmn) throws Exception {
+        
+        InputStream inputStream = null;
+        byte[] buffer = null;
+        File file = null;
+        OutputStream outputStream = null;
+        
+        //Teste recuperação de arquivo BPMN.
+        inputStream = repositoryService.getProcessModel(definitionsBpmn.getDeployedProcessDefinitions().get(0).getId());
+        buffer = new byte[inputStream.available()];        
+        inputStream.read(buffer);
+        inputStream.close();
+        
+        file = new File("temp.bpmn");
+        outputStream = new FileOutputStream(file);
+        outputStream.write(buffer);
+        outputStream.flush();
+        outputStream.close();
+        
+        //Teste recuperação de arquivo DMN
+        inputStream = repositoryService.getDecisionModel(definitionsDmn.getDeployedDecisionDefinitions().get(0).getId());
+        buffer = new byte[inputStream.available()];        
+        inputStream.read(buffer);
+        inputStream.close();
+        
+        file = new File("temp.dmn");
+        outputStream = new FileOutputStream(file);
+        outputStream.write(buffer);
+        outputStream.flush();
+        outputStream.close();
     }
     
     /**
@@ -177,7 +230,7 @@ public class Main {
     public static void iniciarProcesso()  throws Exception {
     
         print("Processo iniciado");
-        processInstance = runtimeService.startProcessInstanceByKey("process");
+        processInstance = runtimeService.startProcessInstanceByKey("Process_1");
         startedProcesses.add(processInstance);
         
         executarProcesso(processInstance, null);
@@ -224,8 +277,8 @@ public class Main {
      * @param waitForUserInput Se for true o usuário deverá entrar um "enter" para sair do método. Caso false o método printa o que tiver que printar e finaliza.
      * @throws Exception
      */
-    public static void historico(ProcessInstance processInstance, Boolean waitForUserInput) throws Exception{
-            
+    public static void historico(ProcessInstance processInstance, Boolean waitForUserInput) throws Exception {
+             
         //sid-72656344-BF74-4A56-A35B-FFA0DA4ED609
         //model.getProcesses().get(0).getLanes().get(0).getFlowReferences()
         //model.getMainProcess().getLanes().get(0).getFlowReferences()
@@ -280,6 +333,91 @@ public class Main {
             scanner.nextLine();
         print(mainSeparator);                    
     }
+    
+    public static Map<String, Object> executarProcessoCoreForm(Task task, Boolean hadPassedFormInputs, List<String> formInputs, Integer index) {
+        
+        FormData formData = formService.getTaskFormData(task.getId());
+        
+        List<FormField> formProperties = formData.getFormFields();
+        
+        Map<String, Object> variables = new HashMap<>();
+        
+        for (FormField formProperty : formProperties) {
+            
+            if (formProperty.getType() instanceof EnumFormType) {
+                
+                
+                if ("envioDeEmail".equals(formProperty.getId())) {
+                    
+                    @SuppressWarnings("unchecked")                    
+                    Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
+                    for (Entry<String, String> entry : values.entrySet()) {
+                        runtimeService.setVariable(processInstance.getId(), "enviarEmail", entry.getValue());
+                        runtimeService.signalEventReceived("enviarEmail");
+                    }                            
+                    
+                } else {
+                    //Resto
+                }
+                
+                print("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
+                
+                @SuppressWarnings("unchecked")                    
+                Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
+                for (Entry<String, String> entry : values.entrySet()) {
+                    print(entry.getKey() + " (" + entry.getValue() + ")");
+                }
+                print(mainSeparator);
+                String key = null;    
+                do  {
+                    key = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
+                      
+                    if (values.containsKey(key)) {
+                        //variables.put(formProperty.getId() + "_v", new Variable(key, values.get(key)));
+                        variables.put(formProperty.getId(), key);
+                    } else {
+                        print("Opção inválida");
+                    }
+                } while (!values.containsKey(key));
+                
+            } else {
+                print("Informe o valor para o campo " + formProperty.getId() + ":");
+                print(mainSeparator);                    
+                String valor = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
+                //variables.put(formProperty.getId() + "_v", valor);
+                variables.put(formProperty.getId(), valor);
+            }
+        }
+        
+        return variables;
+        
+    }
+    
+    public static Map<String, Object>  executarProcessoCoreInputOutput(Task task, Boolean hadPassedFormInputs, List<String> formInputs, Integer index) {
+
+        Map<String, Object> variables = new HashMap<>();        
+        Map<String, Object> taskVariables = taskService.getVariables(task.getId());
+        
+        print("Escolha uma opção de valor para o campo :");
+        
+        for (Entry<String, Object> entry : taskVariables.entrySet())                
+            print(entry.getKey() + " (" + entry.getValue() + ")");
+        
+        print(mainSeparator);
+        String key = null;
+
+        do  {                
+            key = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();                  
+            
+            if (taskVariables.containsKey(key)) {         
+                variables.put("resultadoAtividadeUsuario", taskVariables.get(key));
+            } else {
+                print("Opção inválida");
+            }
+        } while (!taskVariables.containsKey(key));
+        
+        return variables;
+    }
 
     /**
      * Executa o processo passo a passo.
@@ -288,9 +426,9 @@ public class Main {
      * @param formInputs Lista para "automatizar" input de dados. Caso seja passada o scanner será ignorado e o método finalizará ao acabarem os formInputs.
      * @throws Exception
      */
-    public static void executarProcesso(ProcessInstance processInstance, List<String> formInputs) throws Exception {
+    public static void executarProcesso(ProcessInstance processInstance, List<String> inputs) throws Exception {
 
-        Boolean hadPassedFormInputs = !(null == formInputs || formInputs.isEmpty());
+        Boolean hadPassedInputs = !(null == inputs || inputs.isEmpty());
         
         print("\n");        
         print(mainSeparator);
@@ -298,71 +436,31 @@ public class Main {
         print(mainSeparator);
         print("\n");
         
-        BpmnModelInstance model = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());                
+        BpmnModelInstance model = repositoryService.getBpmnModelInstance(processInstance.getProcessDefinitionId());      
+                
         Task task = getCurrentTaskForProcessInstanceId(processInstance.getId());
         
         Integer index = 0;
         while (null != task) {
+            
+//            Collection<CamundaProperties> properties = model.getModelElementsByType(CamundaProperties.class);
+//            for (CamundaProperties camundaProperties : properties) {
+//                for (CamundaProperty property: camundaProperties.getCamundaProperties()) {
+//                    System.out.println("Value: " + property.getCamundaValue());
+//                    System.out.println("Name: " + property.getCamundaName());
+//                }
+//                System.out.println("\n");                
+//            }
                         
-            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey());            
+            String laneName = getLaneNameForTaskDefinitionIdFromModel(model, task.getTaskDefinitionKey()); //XXX aqui escolhe a implementação para exibir as opções para o usuário.            
             
             print(mainSeparator);                
             print("Task atual: " + task.getName() + ", Categoria: " + laneName);
             print(secondarySeparator);
             
-            FormData formData = formService.getTaskFormData(task.getId());
-            List<FormField> formProperties = formData.getFormFields();
-            
-            Map<String, Object> variables = new HashMap<>();
-            
-            for (FormField formProperty : formProperties) {
-                
-                if (formProperty.getType() instanceof EnumFormType) {
-                    
-                    
-                    if ("envioDeEmail".equals(formProperty.getId())) {
-                        
-                        @SuppressWarnings("unchecked")                    
-                        Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
-                        for (Entry<String, String> entry : values.entrySet()) {
-                            runtimeService.setVariable(processInstance.getId(), "enviarEmail", entry.getValue());
-                            runtimeService.signalEventReceived("enviarEmail");
-                        }                            
-                        
-                    } else {
-                        //Resto
-                    }
-                    
-                    print("Escolha uma opção de valor para o campo " + formProperty.getId() + ":");                    
-                    
-                    @SuppressWarnings("unchecked")                    
-                    Map<String, String> values = (Map<String, String>) formProperty.getType().getInformation("values");
-                    for (Entry<String, String> entry : values.entrySet()) {
-                        print(entry.getKey() + " (" + entry.getValue() + ")");
-                    }
-                    print(mainSeparator);
-                    String key = null;    
-                    do  {
-                        key = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
-                          
-                        if (values.containsKey(key)) {
-                            //variables.put(formProperty.getId() + "_v", new Variable(key, values.get(key)));
-                            variables.put(formProperty.getId(), key);
-                        } else {
-                            print("Opção inválida");
-                        }
-                    } while (!values.containsKey(key));
-                    
-                } else {
-                    print("Informe o valor para o campo " + formProperty.getId() + ":");
-                    print(mainSeparator);                    
-                    String valor = hadPassedFormInputs ? formInputs.get(index) : scanner.nextLine();
-                    //variables.put(formProperty.getId() + "_v", valor);
-                    variables.put(formProperty.getId(), valor);
-                }
-                
-                index++;
-            }
+            //Map<String, Object> variables = executarProcessoCoreForm(task, hadPassedInputs, inputs, index);
+            Map<String, Object> variables = executarProcessoCoreInputOutput(task, hadPassedInputs, inputs, index);
+            index++;
                         
             //print("\n" + String.join("\n", taskService.getVariables(task.getId()).entrySet().stream().map(i -> i.getKey() + ":" + i.getValue()).collect(Collectors.toList())) + "\n");
             
@@ -379,8 +477,8 @@ public class Main {
                                                     
             print("Pressione enter para continuar (n para sair)");   
             String continuar = null;
-            if (hadPassedFormInputs) {
-                continuar = formInputs.size() == index ? "n" : "";
+            if (hadPassedInputs) {
+                continuar = inputs.size() == index ? "n" : "";
             } else {
                 continuar = scanner.nextLine();
             }
@@ -418,7 +516,7 @@ public class Main {
         
         //Configure aqui
         print = false;
-        Integer amount = 100;
+        Integer amount = 1000;
         Integer threadAmount = 5;
         List<String> formInputs = Arrays.asList("Encaminhar", "9000", "Assumir", "Encaminhar", "Aprovar", "Aprovar", "Aprovar", "Aprovar", "Aprovar"); //Aprovar);
         
@@ -431,7 +529,7 @@ public class Main {
         Benchmark.getDefaultInstance().start(String.format("Iniciando %d processos", amount));
         for (int i = 0; i < amount; i++) {
             taskExecutor.execute(() -> {
-                currentInstances.add(runtimeService.startProcessInstanceByKey("process"));
+                currentInstances.add(runtimeService.startProcessInstanceByKey("Process_1"));
             });            
         }        
         startedProcesses.addAll(currentInstances); //Mantém na lista para teste de memória
@@ -487,10 +585,13 @@ public class Main {
      * @return
      */
     public static String getLaneNameForTaskDefinitionIdFromModel(BpmnModelInstance model, String taskDefinitionId) {
-        return model.getModelElementsByType(Lane.class)
-            .stream()
-            .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
-            .map(i -> i.getName()).collect(Collectors.toList()).get(0);
+        if (0 < model.getModelElementsByType(Lane.class).size()) {
+            return model.getModelElementsByType(Lane.class)
+                    .stream()
+                    .filter(x -> 0 < x.getFlowNodeRefs().stream().filter(y -> y.getId().equals(taskDefinitionId)).count())
+                    .map(i -> i.getName()).collect(Collectors.toList()).get(0);    
+        } 
+        return "";        
     }
     
 //    public static Task getCurrentTask() {
